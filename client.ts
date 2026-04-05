@@ -9,16 +9,16 @@ import { ZeroClawWS } from "./src/ws-client.js";
 import type { IPlugin, PluginContext } from "bun_plugins";
 import { getRegistryPlugin } from "./src/registry.js";
 //import type { ActionHandler,ActionDefinition } from "trigger_system/node";
-export const AI_RESPOND = "ai_respond";
+const AI_RESPOND = "ai_respond";
 
-export default class zeroclawPlugin implements IPlugin {
+export class zeroclawPlugin implements IPlugin {
   name = "zeroclaw-plugin";
   version = "1.0.0";
   description = "ZeroClaw plugin https://github.com/zeroclaw-labs/zeroclaw";
   private gateway: GatewayProcess | null = null;
   private client: ZeroClawWS | null = null;
   defaultConfig = {
-    baseUrl: "http;//127.0.0.1:42617",
+    baseUrl: "http://127.0.0.1:42617",
     token: ""
   };
 
@@ -117,5 +117,54 @@ export default class zeroclawPlugin implements IPlugin {
       this.client.disconnect();
     }
     stopGateway(this.gateway);
+  }
+}
+if (import.meta.main) {
+  console.log("🚀 Starting standalone test flow...");
+
+  try {
+    // 1. Spawn the local gateway process
+    console.log("⏳ Spawning gateway...");
+    const gateway = await spawnGateway();
+    await waitForGateway();
+    console.log("✅ Gateway is ready.");
+
+    // 2. Intercept / retrieve the pairing code
+    console.log("⏳ Retrieving pairing code...");
+    const pairingCode = await getPairingCode();
+    console.log("✅ Pairing code:", pairingCode);
+
+    // 3. Pair with the gateway → get a bearer token
+    console.log("⏳ Pairing with gateway...");
+    const token = await pairWithGateway(pairingCode);
+    console.log("✅ Token obtained:", token.substring(0, 10) + "...");
+
+    // 4. Open the WebSocket connection
+    const baseUrl = "http://127.0.0.1:42617";
+    console.log(`⏳ Connecting WebSocket to ${baseUrl}...`);
+    const ws = new ZeroClawWS(baseUrl, token);
+    
+    ws.onDone = (full) => console.log("\n✅ Full response:", full);
+    ws.onChunk = (content) => process.stdout.write(content);
+    ws.onError = (msg) => console.error("❌ Remote error:", msg);
+    ws.onSessionStart = (sessionId, resumed) => {
+      console.log(`\n🔌 Session started: ${sessionId} (resumed: ${resumed})`);
+      console.log("📤 Sending test message...");
+      ws.sendMessage("Hello from ZeroClaw standalone test!");
+    };
+    
+    ws.connect();
+
+    // 5. Cleanup on exit
+    process.on("SIGINT", () => {
+      console.log("\n🛑 Shutting down...");
+      ws.disconnect();
+      stopGateway(gateway);
+      process.exit(0);
+    });
+
+  } catch (error) {
+    console.error("❌ Error in test flow:", error);
+    process.exit(1);
   }
 }

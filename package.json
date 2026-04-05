@@ -4,7 +4,8 @@
     "description": "ZeroClaw plugin https://github.com/zeroclaw-labs/zeroclaw",
     "main": "client.ts",
     "scripts": {
-        "start": "bun run client.ts"
+        "start": "bun run client.ts",
+        "build": "bun run build.ts"
     },
     "dependencies": {
         "bun_plugins": "^0.1.1",
