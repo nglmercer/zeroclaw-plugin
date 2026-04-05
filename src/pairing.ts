@@ -1,13 +1,11 @@
 import { resolve } from "path";
-
+import { getBaseDir } from "./utils";
 const GATEWAY = "http://127.0.0.1:42617";
 
 const isWindows = process.platform === "win32";
 const binaryName = isWindows ? "zeroclaw.exe" : "zeroclaw";
 
 /** Absolute path to the zeroclaw binary (sibling of this package). */
-const ZEROCLAW_EXE = resolve(import.meta.dir, `../${binaryName}`);
-
 /**
  * Attempts to retrieve a live pairing code from the local gateway.
  *
@@ -16,7 +14,8 @@ const ZEROCLAW_EXE = resolve(import.meta.dir, `../${binaryName}`);
  *  2. Authenticated API     POST /api/pairing/initiate
  *  3. CLI subprocess        zeroclaw gateway get-paircode --new
  */
-export async function getPairingCode(): Promise<string> {
+export async function getPairingCode(baseDir?:string): Promise<string> {
+  const ZEROCLAW_EXE = resolve(baseDir || getBaseDir(), `${binaryName}`);
   // 1. Try the public endpoint during initial setup
   try {
     const publicResp = await fetch(`${GATEWAY}/pair/code`);

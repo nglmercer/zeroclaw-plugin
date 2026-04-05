@@ -1,0 +1,13 @@
+{
+    "name": "zeroclaw-plugin",
+    "version": "1.0.0",
+    "description": "ZeroClaw plugin https://github.com/zeroclaw-labs/zeroclaw",
+    "main": "client.ts",
+    "scripts": {
+        "start": "bun run client.ts"
+    },
+    "dependencies": {
+        "bun_plugins": "^0.1.1",
+        "trigger_system": "^1.3.5"
+    }
+}

@@ -7,6 +7,9 @@ import {
 import { getPairingCode, pairWithGateway } from "./src/pairing.js";
 import { ZeroClawWS } from "./src/ws-client.js";
 import type { IPlugin, PluginContext } from "bun_plugins";
+import { getRegistryPlugin } from "./src/registry.js";
+//import type { ActionHandler,ActionDefinition } from "trigger_system/node";
+export const AI_RESPOND = "ai_respond";
 
 export default class zeroclawPlugin implements IPlugin {
   name = "zeroclaw-plugin";
@@ -20,7 +23,7 @@ export default class zeroclawPlugin implements IPlugin {
   };
 
   async onLoad(context: PluginContext): Promise<void> {
-    const { log, emit, on,storage } = context;
+    const { log, emit } = context;
     if (!context)return;
     log.info(` Initializing...`);
     const pluginData = await this.pluginData(context,{});
@@ -48,6 +51,7 @@ export default class zeroclawPlugin implements IPlugin {
     await this.pluginData(context,{token:getToken,baseUrl});
     // ── 4. Open the WebSocket connection ────────────────────────────────────────
     this.client = new ZeroClawWS(baseUrl, getToken);
+    const registryPlugin = await getRegistryPlugin(context);
 
     this.client.onChunk = (content) => {
       emit(`${this.name}:chunk`, content);
@@ -55,6 +59,10 @@ export default class zeroclawPlugin implements IPlugin {
     };
     this.client.onDone = (full) => {
       emit(`${this.name}:done`, full);
+      emit("system", {
+        eventName: "TTS",
+        data: { message: full },
+      });
       log.info(`Full response:`, full);
     }
     this.client.onError = (msg) =>{
@@ -66,6 +74,22 @@ export default class zeroclawPlugin implements IPlugin {
       log.info(` Session ${id}`,{resumed});
     };
     this.client.connect();
+    if (!registryPlugin) {
+      log.error(` Registry plugin not found`);
+      return;
+    }
+    registryPlugin.registry?.register(AI_RESPOND,(action,ctx)=>{
+      log.info(`Action received:`, action);
+      log.info(`Context received:`, ctx);
+      const {prompt,user} = action.params as {prompt?:string,user?:string};
+      if (!prompt) {
+        log.error(` Missing prompt or user`,{prompt,user});
+        return;
+      }
+      const message = `${user || "user"}:${prompt}`;
+      this.client?.sendMessage(message);
+      return {sucess:true,message};
+    })
     //await Bun.sleep(1000);
     //this.client.sendMessage("Hello from ZeroClaw Bun Plugin!");
   }
