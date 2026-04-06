@@ -36,13 +36,9 @@ export class ZeroClawWS {
     params.set("session_id", this.sessionId);
 
     const url = `${this.baseUrl}/ws/chat?${params.toString()}`;
-    const protocols = ["zeroclaw.v1"];
-    if (this.token) {
-      protocols.push(`bearer.${this.token}`);
-    }
 
     console.log("[ws] Connecting to:", url);
-    this.ws = new WebSocket(url, protocols);
+    this.ws = new WebSocket(url);
 
     this.ws.onopen = () => {
       console.log("[ws] Connected");
